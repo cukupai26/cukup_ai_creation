@@ -1,0 +1,6 @@
+{
+  "name": "CukupAI - Jaga Uang. Jaga Keluarga.",
+  "description": "Asisten arus kas keluarga berbasis AI untuk mencatat keuangan cepat, deteksi defisit dini, proyeksi akhir bulan, dan strategi peluang penghasilan realistis.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
