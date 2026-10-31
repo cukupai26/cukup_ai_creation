@@ -14,6 +14,8 @@ function resolvePort(): number {
     if (!isNaN(val) && val > 0) return val;
   }
 
+  // Inside AI Studio internal container, Nginx reverse proxy handles external traffic
+  // and proxies to the app server on DEFAULT_APP_PORT (3000).
   if (process.env.DEFAULT_APP_PORT) {
     return Number(process.env.DEFAULT_APP_PORT);
   }
@@ -21,9 +23,8 @@ function resolvePort(): number {
     return Number(process.env.APP_PORT);
   }
 
-  // If process.env.PORT is 8080, that is the Nginx reverse-proxy port in Cloud Run;
-  // the app server itself must listen on port 3000 so Nginx can proxy to it.
-  if (process.env.PORT && process.env.PORT !== '8080') {
+  // When deployed standalone to Google Cloud Run, Cloud Run injects PORT (e.g. 8080)
+  if (process.env.PORT) {
     return Number(process.env.PORT);
   }
 

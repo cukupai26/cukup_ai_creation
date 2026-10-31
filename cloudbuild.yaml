@@ -1,0 +1,43 @@
+steps:
+  # 1. Build and push image using modern Artifact Registry with lowercase project normalization
+  - name: 'gcr.io/cloud-builders/docker'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        # GCP Project IDs must be lowercase in Docker image tags
+        PROJ=$(echo "${PROJECT_ID}" | tr '[:upper:]' '[:lower:]')
+        REGION="asia-southeast2"
+        IMAGE="${REGION}-docker.pkg.dev/${PROJ}/cloud-run-source-deploy/cukupai:${COMMIT_SHA:-latest}"
+        LATEST="${REGION}-docker.pkg.dev/${PROJ}/cloud-run-source-deploy/cukupai:latest"
+
+        echo "Building image for project: $PROJ"
+        docker build -t "$IMAGE" -t "$LATEST" .
+
+        echo "Pushing image to Artifact Registry..."
+        docker push "$LATEST" || docker push "$IMAGE"
+
+  # 2. Deploy to Google Cloud Run
+  - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
+    entrypoint: 'bash'
+    args:
+      - '-c'
+      - |
+        set -e
+        PROJ=$(echo "${PROJECT_ID}" | tr '[:upper:]' '[:lower:]')
+        REGION="asia-southeast2"
+        IMAGE="${REGION}-docker.pkg.dev/${PROJ}/cloud-run-source-deploy/cukupai:latest"
+
+        gcloud run deploy cukupai \
+          --image "$IMAGE" \
+          --region "$REGION" \
+          --project "$PROJ" \
+          --platform managed \
+          --allow-unauthenticated \
+          --port 8080 \
+          --memory 512Mi \
+          --cpu 1
+
+options:
+  logging: CLOUD_LOGGING_ONLY
