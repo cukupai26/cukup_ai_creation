@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#1B5E43" />
+      <stop offset="50%" stop-color="#0F382A" />
+      <stop offset="100%" stop-color="#092219" />
+    </linearGradient>
+    <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F3DC7D" />
+      <stop offset="50%" stop-color="#C59B27" />
+      <stop offset="100%" stop-color="#9C7716" />
+    </linearGradient>
+    <filter id="subtleShadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="6" stdDeviation="10" flood-opacity="0.3" flood-color="#000000" />
+    </filter>
+  </defs>
+
+  <!-- Background container -->
+  <rect width="512" height="512" rx="112" fill="url(#bgGrad)" />
+
+  <!-- Outer subtle circular ring -->
+  <circle cx="256" cy="256" r="184" fill="none" stroke="#C59B27" stroke-width="3" stroke-opacity="0.25" stroke-dasharray="8 6" />
+
+  <!-- Shield / Home Guardian shape -->
+  <path d="M256 96 L376 156 V264 C376 342 324 402 256 428 C188 402 136 342 136 264 V156 Z" 
+        fill="#134734" 
+        stroke="url(#goldGrad)" 
+        stroke-width="12" 
+        stroke-linejoin="round"
+        filter="url(#subtleShadow)" />
+
+  <!-- Inner Rupiah / Shield sprout emblem -->
+  <!-- Top Sparkle / Star of prudence -->
+  <path d="M256 148 L262 168 L282 174 L262 180 L256 200 L250 180 L230 174 L250 168 Z" fill="url(#goldGrad)" />
+
+  <!-- Safe balance scale / Leaf emblem -->
+  <path d="M256 220 C220 220 192 248 192 284 C192 326 232 356 256 370 C280 356 320 326 320 284 C320 248 292 220 256 220 Z" 
+        fill="#0D3023" 
+        stroke="#F7F5EE" 
+        stroke-width="5" />
+
+  <!-- Gold Growth Coin & Family Heart in Center -->
+  <circle cx="256" cy="286" r="34" fill="url(#goldGrad)" />
+  <!-- Letter C for Cukup -->
+  <path d="M268 270 C258 270 250 278 250 286 C250 294 258 302 268 302" 
+        fill="none" 
+        stroke="#0F382A" 
+        stroke-width="6" 
+        stroke-linecap="round" />
+</svg>

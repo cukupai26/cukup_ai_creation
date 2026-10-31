@@ -3,6 +3,7 @@ import { ShieldCheck, RefreshCw, FileJson, Building2, Crown } from 'lucide-react
 import { CashflowMetrics } from '../utils/calculations';
 import { Language } from '../types';
 import { getTranslation } from '../utils/i18n';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface HeaderProps {
   metrics: CashflowMetrics;
@@ -52,8 +53,11 @@ export const Header: React.FC<HeaderProps> = ({
           </div>
         </div>
 
-        {/* Right Action Tools: Language Switcher, Bansos Help, Backup, and Demo Toggle */}
+        {/* Right Action Tools: PWA Install, Language Switcher, Bansos Help, Backup, and Demo Toggle */}
         <div className="flex items-center gap-1.5">
+          {/* PWA Mobile App Install Button */}
+          <PWAInstallButton lang={lang} variant="header" />
+
           {/* CukupAI Pro Prototype Access */}
           {onOpenProModal && (
             <button

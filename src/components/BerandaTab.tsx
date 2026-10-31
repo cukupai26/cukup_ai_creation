@@ -19,6 +19,7 @@ import { Transaction, UpcomingMandatoryExpense, Language } from '../types';
 import { DailyCheckIn } from './DailyCheckIn';
 import { CukupAiProCard } from './CukupAiProCard';
 import { getTranslation, formatI18n } from '../utils/i18n';
+import { PWAInstallButton } from './PWAInstallButton';
 
 interface BerandaTabProps {
   metrics: CashflowMetrics;
@@ -90,6 +91,9 @@ export const BerandaTab: React.FC<BerandaTabProps> = ({
 
   return (
     <div className="space-y-4 pb-20 animate-in fade-in duration-300">
+      {/* PWA Mobile Web App Install Banner */}
+      <PWAInstallButton lang={lang} variant="banner" />
+
       {/* 1. HERO CARD: Uang Aman Hari Ini & Saldo Tersedia */}
       <div className="bg-gradient-to-b from-[#0F382A] to-[#164736] text-[#F7F5EE] rounded-3xl p-5 shadow-lg border border-[#1E5740] relative overflow-hidden">
         {/* Subtle decorative glow */}

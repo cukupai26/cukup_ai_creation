@@ -36,6 +36,7 @@ import { BackupModal } from './components/BackupModal';
 import { SetOpeningBalanceModal } from './components/SetOpeningBalanceModal';
 import { BansosModal } from './components/BansosModal';
 import { CukupAiProModal } from './components/CukupAiProModal';
+import { OfflineIndicator } from './components/OfflineIndicator';
 
 export default function App() {
   // 1. Language State with localStorage persistence
@@ -261,6 +262,9 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#F7F5EE] text-[#192A24] flex flex-col font-sans">
+      {/* Offline Connectivity Status Notification */}
+      <OfflineIndicator lang={lang} />
+
       {/* Top Header with Language Switcher and Backup */}
       <Header
         metrics={metrics}

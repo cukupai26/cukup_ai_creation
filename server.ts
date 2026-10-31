@@ -6,12 +6,52 @@ import { GoogleGenAI, Type } from '@google/genai';
 
 dotenv.config();
 
+function resolvePort(): number {
+  const args = process.argv.slice(2);
+  const portIdx = args.findIndex((arg) => arg === '--port' || arg === '-p');
+  if (portIdx !== -1 && args[portIdx + 1]) {
+    const val = Number(args[portIdx + 1]);
+    if (!isNaN(val) && val > 0) return val;
+  }
+
+  if (process.env.DEFAULT_APP_PORT) {
+    return Number(process.env.DEFAULT_APP_PORT);
+  }
+  if (process.env.APP_PORT) {
+    return Number(process.env.APP_PORT);
+  }
+
+  // If process.env.PORT is 8080, that is the Nginx reverse-proxy port in Cloud Run;
+  // the app server itself must listen on port 3000 so Nginx can proxy to it.
+  if (process.env.PORT && process.env.PORT !== '8080') {
+    return Number(process.env.PORT);
+  }
+
+  return 3000;
+}
+
+function resolveHost(): string {
+  const args = process.argv.slice(2);
+  const hostIdx = args.findIndex((arg) => arg === '--host' || arg === '-h');
+  if (hostIdx !== -1 && args[hostIdx + 1]) {
+    return args[hostIdx + 1];
+  }
+  return '0.0.0.0';
+}
+
+const PORT = resolvePort();
+const HOST = resolveHost();
+
 const app = express();
-const PORT = Number(process.env.PORT) || 3000;
 app.use(express.json({ limit: '15mb' }));
 app.use(express.urlencoded({ extended: true, limit: '15mb' }));
 
 const apiKey = process.env.GEMINI_API_KEY || '';
+const metaApiKey = process.env.META_API_KEY || process.env.LLM_API_KEY || '';
+const metaApiBaseUrl = process.env.META_API_BASE_URL || 'https://api.llama-api.com';
+const metaModel = process.env.META_MODEL || 'llama3.3-70b';
+const hasAiProvider = Boolean(apiKey || metaApiKey);
+
 const ai = new GoogleGenAI({
   apiKey: apiKey,
   httpOptions: {
@@ -21,7 +61,58 @@ const ai = new GoogleGenAI({
   },
 });
 
-// Resilient caller with multi-model fallback across supported free-tier models (gemini-3.8-flash, gemini-3.1-flash-lite)
+// Meta / LLaMA API client using standard OpenAI-compatible completions
+async function callMetaLlama(options: {
+  prompt: string;
+  systemInstruction?: string;
+  responseMimeType?: string;
+  temperature?: number;
+}): Promise<string> {
+  if (!metaApiKey) {
+    throw new Error('Meta API key is not configured');
+  }
+
+  const endpoint = `${metaApiBaseUrl.replace(/\/+$/, '')}/v1/chat/completions`;
+  const messages: Array<{ role: string; content: string }> = [];
+
+  if (options.systemInstruction) {
+    messages.push({ role: 'system', content: options.systemInstruction });
+  }
+  messages.push({ role: 'user', content: options.prompt });
+
+  const body: any = {
+    model: metaModel,
+    messages,
+    temperature: typeof options.temperature === 'number' ? options.temperature : 0.3,
+  };
+
+  if (options.responseMimeType === 'application/json') {
+    body.response_format = { type: 'json_object' };
+  }
+
+  const response = await fetch(endpoint, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${metaApiKey}`,
+    },
+    body: JSON.stringify(body),
+  });
+
+  if (!response.ok) {
+    const errText = await response.text();
+    throw new Error(`Meta API HTTP ${response.status}: ${errText}`);
+  }
+
+  const data = (await response.json()) as any;
+  const content = data?.choices?.[0]?.message?.content;
+  if (!content) {
+    throw new Error('Empty response from Meta API');
+  }
+  return content;
+}
+
+// Resilient caller with multi-model fallback across Gemini and Meta LLaMA
 async function callGeminiContent(options: {
   contents: any;
   systemInstruction?: string;
@@ -32,38 +123,69 @@ async function callGeminiContent(options: {
   const candidateModels = ['gemini-3.8-flash', 'gemini-3.1-flash-lite'];
   let lastError: any = null;
 
-  for (const model of candidateModels) {
-    try {
-      const config: any = {};
-      if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
-      if (typeof options.temperature === 'number') config.temperature = options.temperature;
-      if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
-      if (options.responseSchema) config.responseSchema = options.responseSchema;
+  if (apiKey) {
+    for (const model of candidateModels) {
+      try {
+        const config: any = {};
+        if (options.systemInstruction) config.systemInstruction = options.systemInstruction;
+        if (typeof options.temperature === 'number') config.temperature = options.temperature;
+        if (options.responseMimeType) config.responseMimeType = options.responseMimeType;
+        if (options.responseSchema) config.responseSchema = options.responseSchema;
 
-      const response = await ai.models.generateContent({
-        model,
-        contents: options.contents,
-        config: Object.keys(config).length > 0 ? config : undefined,
-      });
+        const response = await ai.models.generateContent({
+          model,
+          contents: options.contents,
+          config: Object.keys(config).length > 0 ? config : undefined,
+        });
 
-      return response;
-    } catch (err: any) {
-      lastError = err;
-      const isQuotaOrRateLimit =
-        err?.status === 'RESOURCE_EXHAUSTED' ||
-        err?.code === 429 ||
-        (typeof err?.message === 'string' &&
-          (err.message.includes('429') || err.message.includes('quota') || err.message.includes('RESOURCE_EXHAUSTED')));
+        return response;
+      } catch (err: any) {
+        lastError = err;
+        const isQuotaOrRateLimit =
+          err?.status === 'RESOURCE_EXHAUSTED' ||
+          err?.code === 429 ||
+          (typeof err?.message === 'string' &&
+            (err.message.includes('429') || err.message.includes('quota') || err.message.includes('RESOURCE_EXHAUSTED')));
 
-      if (isQuotaOrRateLimit) {
-        console.info(`[CukupAI Engine] Free-tier limit reached for ${model}, attempting next model...`);
-      } else {
-        console.info(`[CukupAI Engine] Note: Model ${model} unavailable, trying next model...`);
+        if (isQuotaOrRateLimit) {
+          console.info(`[CukupAI Engine] Free-tier limit reached for ${model}, attempting next model...`);
+        } else {
+          console.info(`[CukupAI Engine] Note: Model ${model} unavailable, trying next model...`);
+        }
       }
     }
   }
 
-  throw lastError;
+  // If Gemini is unavailable or not configured, attempt Meta LLaMA if text prompt is available
+  if (metaApiKey) {
+    try {
+      let promptText = '';
+      if (typeof options.contents === 'string') {
+        promptText = options.contents;
+      } else if (Array.isArray(options.contents)) {
+        promptText = options.contents
+          .map((part: any) => (typeof part === 'string' ? part : part?.text || part?.parts?.[0]?.text || ''))
+          .filter(Boolean)
+          .join('\n');
+      }
+
+      if (promptText) {
+        const metaResultText = await callMetaLlama({
+          prompt: promptText,
+          systemInstruction: options.systemInstruction,
+          responseMimeType: options.responseMimeType,
+          temperature: options.temperature,
+        });
+
+        return { text: metaResultText };
+      }
+    } catch (metaErr: any) {
+      console.info(`[CukupAI Engine] Meta API call error: ${metaErr?.message || metaErr}`);
+      lastError = metaErr;
+    }
+  }
+
+  throw lastError || new Error('No AI provider credentials configured (Gemini or Meta)');
 }
 
 // Helper for local parsing fallback if API key is absent or quota exceeded
@@ -127,7 +249,7 @@ app.post('/api/ai/parse-transaction', async (req, res) => {
 
   const todayStr = currentDate || new Date().toISOString().split('T')[0];
 
-  if (!apiKey) {
+  if (!hasAiProvider) {
     return res.json(fallbackParseTransaction(text, todayStr));
   }
 
@@ -320,7 +442,7 @@ app.post('/api/ai/analyze-cashflow', async (req, res) => {
     profile
   } = req.body;
 
-  if (!apiKey) {
+  if (!hasAiProvider) {
     const isDeficit = projectedEndOfMonthBalance < 0 || flexibleFunds < 0;
     const isWarning = !isDeficit && (safeDailySpending < averageDailyExpense * 0.7);
     const status = isDeficit ? 'KRITIS' : (isWarning ? 'PERLU_WASPADA' : 'AMAN');
@@ -434,7 +556,7 @@ app.post('/api/ai/generate-deficit-plan', async (req, res) => {
   const { deficitAmount, remainingDays, currentBalance, profile, recentExpenses } = req.body;
   const target = Math.max(100000, Number(deficitAmount) || 500000);
 
-  if (!apiKey) {
+  if (!hasAiProvider) {
     // Local deterministic high-value plan
     const partA_amount = Math.round(target * 0.55 / 10000) * 10000;
     const partB_amount = Math.round(target * 0.15 / 10000) * 10000;
@@ -599,7 +721,7 @@ app.post('/api/ai/generate-opportunities', async (req, res) => {
   const target = Number(deficitTarget) || 700000;
   const days = Number(remainingDays) || 12;
 
-  if (!apiKey) {
+  if (!hasAiProvider) {
     // Provide 3 highly realistic Indonesian household business opportunities
     const perfumeNet = profile?.business?.netProfitPerUnit || 175000;
     const perfumeUnits = Math.ceil(target / perfumeNet);
@@ -998,8 +1120,8 @@ app.post('/api/ai/chat', async (req, res) => {
   const lastUserMsg = [...messages].reverse().find((m: any) => m.role === 'user');
   const userQuery = lastUserMsg?.content || messages[messages.length - 1].content || '';
 
-  // If no Gemini API key configured, use comprehensive contextual fallback
-  if (!apiKey) {
+  // If no AI provider configured, use comprehensive contextual fallback
+  if (!hasAiProvider) {
     const reply = generateContextualFallbackReply(userQuery, financialContext, isEn, messages);
     return res.json({ reply });
   }
@@ -1353,8 +1475,8 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`CukupAI server listening on port ${PORT}`);
+  app.listen(PORT, HOST, () => {
+    console.log(`CukupAI server listening on ${HOST}:${PORT}`);
   });
 }
 
