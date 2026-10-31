@@ -13,6 +13,9 @@
     "test:bansos": "tsx --test tests/bansos.test.ts",
     "test:ai": "tsx tests/ai-agent.test.ts"
   },
+  "engines": {
+    "node": ">=22.0.0"
+  },
   "dependencies": {
     "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.3.3",
@@ -32,7 +35,7 @@
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "autoprefixer": "^10.4.21",
-    "esbuild": "^0.25.0",
+    "esbuild": "^0.28.2",
     "pngjs": "^7.0.0",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.21.0",
