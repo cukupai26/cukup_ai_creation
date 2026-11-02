@@ -1,20 +1,19 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# CukupAI — Guard Your Cash. Guard Your Family.
 
-# Run and deploy your AI Studio app
+CukupAI is an empathetic, AI-driven financial guardrail Progressive Web App (PWA) built for the Meta Global AI Developer Hackathon (Startups Track).
 
-This contains everything you need to run your app locally.
+## 🚀 Live Demo & PWA Application
+- *Live App URL:* https://cukup-ai-creation-git-168006365019.europe-west1.run.app/
 
-View your app in AI Studio: https://ai.studio/apps/d22ef62d-5c25-495c-bd2f-95043dbe7c84
+## 🛠️ Tech Stack & Architecture
+- *Frontend & PWA:* Next.js, React, Tailwind CSS (Mobile-first, Offline-first)
+- *AI Core Reasoning:* Meta Llama 3.1 (via Inference Partner APIs)
+- *Computer Vision & OCR:* Google ML Kit (On-device local parsing for $0 cost) + Meta SAM 3.1 (Receipt Segmentation)
+- *Data Grounding:* Meta Search Grounding API for Kemensos DTKS & Official Social Assistance Data
 
-## Run Locally
-
-**Prerequisites:**  Node.js
-
-
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+## 🔧 Prerequisites & Setup
+1. Clone the repository
+2. Install dependencies: npm install
+3. Set your Meta Model API keys in .env.local:
+   ```env
+   META_MODEL_API_KEY=your_meta_api_key
