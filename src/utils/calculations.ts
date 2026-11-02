@@ -257,7 +257,7 @@ export function calculateCashflowMetrics(
       : `Peringatan: Arus kas berpotensi defisit Rp${deficitAmount.toLocaleString('id-ID')} sebelum akhir bulan.`;
   } else if (
     (dailyVariableSpending > 0 && safeDailySpending < dailyVariableSpending * 0.75) || 
-    flexibleFunds < 300000
+    flexibleFunds < 100000
   ) {
     status = 'PERLU_WASPADA';
     statusReason = isEn
